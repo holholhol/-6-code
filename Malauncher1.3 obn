@@ -5,176 +5,109 @@ import subprocess
 import threading
 import requests
 import sys
-import tkinter.filedialog as fd
 
-# UI Styling Setup
 ctk.set_appearance_mode("Dark")
 ctk.set_default_color_theme("blue")
 
-CURRENT_VERSION = "1.3.1"
-# Direct raw link to check and download updates from your repository
-UPDATE_CHECK_URL = "https://raw.githubusercontent.com/holholhol/-6-code/main/Malauncher1.3%20obn"
+CURRENT_VERSION = "1.3.0"
+UPDATE_URL = "https://raw.githubusercontent.com/holholhol/-6-code/main/Malauncher1.3%20obn"
 
 class MaLaun(ctk.CTk):
     def __init__(self):
         super().__init__()
-
         self.title(f"MaLauncher v{CURRENT_VERSION}")
-        self.geometry("920x580")
+        self.geometry("800x500")
         self.resizable(False, False)
 
         self.base_path = r"D:\MaLaun"
-        if not os.path.exists(self.base_path):
-            os.makedirs(self.base_path)
+        os.makedirs(self.base_path, exist_ok=True)
+        self.update_available = False
 
         self.setup_ui()
-        
-        # Automatically check for updates on startup in the background
-        threading.Thread(target=self.check_for_updates, daemon=True).start()
+        threading.Thread(target=self.check_updates, daemon=True).start()
 
     def setup_ui(self):
-        # Banner
-        self.banner = ctk.CTkFrame(self, height=230, fg_color="gray20")
+        self.banner = ctk.CTkFrame(self, height=200, fg_color="gray20")
         self.banner.pack(fill="x", padx=10, pady=10)
         self.news_label = ctk.CTkLabel(self.banner, text=f"MaLauncher v{CURRENT_VERSION}\nSelect version and play", font=("Arial", 20))
         self.news_label.pack(expand=True)
 
-        # Bottom Panel
-        self.bottom_bar = ctk.CTkFrame(self, height=100, fg_color="#333333")
-        self.bottom_bar.pack(fill="x", padx=10, pady=10)
+        bar = ctk.CTkFrame(self, height=80, fg_color="#333333")
+        bar.pack(fill="x", padx=10, pady=10)
 
-        # Username Input
-        self.username_entry = ctk.CTkEntry(self.bottom_bar, placeholder_text="Username")
-        self.username_entry.pack(side="left", padx=10, pady=30)
+        self.user_entry = ctk.CTkEntry(bar, placeholder_text="Username")
+        self.user_entry.pack(side="left", padx=10, pady=20)
 
-        # Version Selector Menu
         try:
-            all_versions = [v['id'] for v in minecraft_launcher_lib.utils.get_version_list() if v['type'] == 'release']
+            versions = [v['id'] for v in minecraft_launcher_lib.utils.get_version_list() if v['type'] == 'release']
         except Exception:
-            all_versions = ["1.20.1", "1.19.4"]
+            versions = ["1.20.1", "1.19.4"]
             
-        self.version_menu = ctk.CTkOptionMenu(self.bottom_bar, values=all_versions)
-        self.version_menu.pack(side="left", padx=10, pady=30)
+        self.ver_menu = ctk.CTkOptionMenu(bar, values=versions)
+        self.ver_menu.pack(side="left", padx=10, pady=20)
 
-        # Launch Button
-        self.launch_button = ctk.CTkButton(self.bottom_bar, text="LAUNCH", fg_color="green", width=100,
-                                           command=self.start_launch_thread)
-        self.launch_button.pack(side="right", padx=10, pady=30)
-
-        # Optifine Button
-        self.optifine_button = ctk.CTkButton(self.bottom_bar, text="✨ Optifine", width=100, fg_color="#b85c00",
-                                             command=self.start_optifine_thread)
-        self.optifine_button.pack(side="right", padx=5, pady=30)
-                                         command=self.open_mods)
-        self.mods_button.pack(side="right", padx=5, pady=30)
-
-        # Update Button
-        self.update_button = ctk.CTkButton(self.bottom_bar, text="🔄 Check Update", width=120, fg_color="#1f538d",
-                                           command=self.manual_update_action)
-        self.update_button.pack(side="right", padx=5, pady=30)
+        ctk.CTkButton(bar, text="LAUNCH", fg_color="green", width=90, command=self.launch_game).pack(side="right", padx=10, pady=20)
+        ctk.CTkButton(bar, text="📁 Mods", width=80, fg_color="gray40", command=self.open_mods).pack(side="right", padx=5, pady=20)
         
-        self.update_available = False
+        self.upd_btn = ctk.CTkButton(bar, text="🔄 Update", width=100, fg_color="#1f538d", command=self.handle_update)
+        self.upd_btn.pack(side="right", padx=5, pady=20)
 
-    def check_for_updates(self):
-        """Checks the remote GitHub link for a new version"""
+    def check_updates(self):
         try:
-            response = requests.get(UPDATE_CHECK_URL, timeout=5)
-            if response.status_code == 200:
-                content = response.text.strip()
-                first_line = content.splitlines()[0] if content else ""
-                
-                # Extract version string from the file header (e.g., # VERSION: 1.4.0)
-                latest_version = CURRENT_VERSION
-                if "VERSION:" in first_line:
-                    latest_version = first_line.split("VERSION:")[1].strip()
-                elif len(first_line) < 10 and "." in first_line:
-                    latest_version = first_line.strip()
+            res = requests.get(UPDATE_URL, timeout=5)
+            if res.status_code == 200:
+                text = res.text.strip()
+                first = text.splitlines()[0] if text else ""
+                latest = CURRENT_VERSION
+                if "VERSION:" in first:
+                    latest = first.split("VERSION:")[1].strip()
+                elif len(first) < 10 and "." in first:
+                    latest = first.strip()
 
-                if latest_version and latest_version != CURRENT_VERSION:
+                if latest != CURRENT_VERSION:
                     self.update_available = True
-                    self.news_label.configure(text=f"New version v{latest_version} available!\nClick 'Update Now' to upgrade.")
-                    self.update_button.configure(text="⭐ Update Now", fg_color="gold", text_color="black")
-                else:
-                    self.news_label.configure(text=f"MaLauncher v{CURRENT_VERSION}\nYou are up to date.")
+                    self.news_label.configure(text=f"New version v{latest} available!")
+                    self.upd_btn.configure(text=" Update", fg_color="gold", text_color="black")
         except Exception as e:
             print(f"Update check failed: {e}")
 
-    def manual_update_action(self):
-        """Handles manual clicks on the update button"""
+    def handle_update(self):
         if not self.update_available:
-            self.news_label.configure(text="Checking for updates...")
-            threading.Thread(target=self.check_for_updates, daemon=True).start()
+            threading.Thread(target=self.check_updates, daemon=True).start()
         else:
-            threading.Thread(target=self.download_and_apply_update, daemon=True).start()
+            threading.Thread(target=self.apply_update, daemon=True).start()
 
-    def download_and_apply_update(self):
-        """Downloads the new code from the URL and restarts the application"""
+    def apply_update(self):
         try:
             self.news_label.configure(text="Downloading update...")
-            response = requests.get(UPDATE_CHECK_URL)
-            if response.status_code == 200:
-                script_path = os.path.abspath(sys.argv[0])
-                with open(script_path, "w", encoding="utf-8") as f:
-                    f.write(response.text)
-                
-                self.news_label.configure(text="Update installed successfully! Restarting...")
+            res = requests.get(UPDATE_URL)
+            if res.status_code == 200:
+                with open(os.path.abspath(sys.argv[0]), "w", encoding="utf-8") as f:
+                    f.write(res.text)
+                self.news_label.configure(text="Restarting...")
                 os.execv(sys.executable, [sys.executable] + sys.argv)
         except Exception as e:
-            self.news_label.configure(text=f"Update failed: {str(e)[:40]}")
+            self.news_label.configure(text=f"Update failed: {str(e)[:30]}")
 
     def open_mods(self):
         mods_path = os.path.join(self.base_path, "mods")
-        if not os.path.exists(mods_path):
-            os.makedirs(mods_path)
+        os.makedirs(mods_path, exist_ok=True)
         os.startfile(mods_path)
 
-    def start_optifine_thread(self):
-        threading.Thread(target=self.install_optifine, daemon=True).start()
+    def launch_game(self):
+        threading.Thread(target=self._run_game, daemon=True).start()
 
-    def install_optifine(self):
-        """Opens file dialog to select Optifine .jar and installs it"""
-        self.news_label.configure(text="Select Optifine installer (.jar) file...")
+    def _run_game(self):
+        ver = self.ver_menu.get()
+        user = self.user_entry.get() or "Player"
+        self.news_label.configure(text=f"Preparing {ver}...")
         
-        optifine_jar = fd.askopenfilename(
-            title="Select Optifine Installer Jar",
-            filetypes=[("Java Archive", "*.jar")]
-        )
+        minecraft_launcher_lib.install.install_minecraft_version(ver, self.base_path)
+        self.news_label.configure(text=f"Launching {ver}...")
         
-        if not optifine_jar:
-            self.news_label.configure(text="Optifine installation cancelled.")
-            return
-
-        try:
-            self.news_label.configure(text="Installing Optifine, please wait...")
-            minecraft_launcher_lib.optifine.install_optifine(optifine_jar, self.base_path)
-            self.news_label.configure(text="Optifine successfully installed!")
-        except Exception as e:
-            self.news_label.configure(text=f"Optifine install error: {str(e)[:40]}")
-
-    def start_launch_thread(self):
-        threading.Thread(target=self.run_game, daemon=True).start()
-
-    def run_game(self):
-        version = self.version_menu.get()
-        username = self.username_entry.get() or "Player"
-
-        self.news_label.configure(text=f"Please wait, preparing {version}...")
-
-        minecraft_launcher_lib.install.install_minecraft_version(version, self.base_path)
-
-        self.news_label.configure(text=f"Launching {version}...")
-
-        options = {
-            "username": username,
-            "uuid": "1",
-            "token": "1",
-            "gameDirectory": self.base_path,
-        }
-
-        command = minecraft_launcher_lib.command.get_minecraft_command(version, self.base_path, options)
-        subprocess.run(command)
+        opts = {"username": user, "uuid": "1", "token": "1", "gameDirectory": self.base_path}
+        subprocess.run(minecraft_launcher_lib.command.get_minecraft_command(ver, self.base_path, opts))
         self.news_label.configure(text="Game closed.")
 
 if __name__ == "__main__":
-    app = MaLaun()
-    app.mainloop()
+    MaLaun().mainloop()

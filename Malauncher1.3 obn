@@ -1,0 +1,157 @@
+import customtkinter as ctk
+import minecraft_launcher_lib
+import os
+import subprocess
+import threading
+import requests
+import sys
+import tkinter.filedialog as fd
+
+# Налаштування стилю
+ctk.set_appearance_mode("Dark")
+ctk.set_default_color_theme("blue")
+
+CURRENT_VERSION = "1.1.0"
+GITHUB_REPO = "твій_логін_гітхаб/назва_репозиторію"
+
+class MaLaun(ctk.CTk):
+    def __init__(self):
+        super().__init__()
+
+        self.title(f"MaLauncher v{CURRENT_VERSION}")
+        self.geometry("850x580")
+        self.resizable(False, False)
+
+        self.base_path = r"D:\MaLaun"
+        if not os.path.exists(self.base_path):
+            os.makedirs(self.base_path)
+
+        self.setup_ui()
+        threading.Thread(target=self.check_for_updates, daemon=True).start()
+
+    def setup_ui(self):
+        # Банер
+        self.banner = ctk.CTkFrame(self, height=230, fg_color="gray20")
+        self.banner.pack(fill="x", padx=10, pady=10)
+        self.news_label = ctk.CTkLabel(self.banner, text=f"MaLauncher v{CURRENT_VERSION}\nSelect version and play", font=("Arial", 20))
+        self.news_label.pack(expand=True)
+
+        # Нижня панель
+        self.bottom_bar = ctk.CTkFrame(self, height=100, fg_color="#333333")
+        self.bottom_bar.pack(fill="x", padx=10, pady=10)
+
+        # Нікнейм
+        self.username_entry = ctk.CTkEntry(self.bottom_bar, placeholder_text="Username")
+        self.username_entry.pack(side="left", padx=10, pady=30)
+
+        # Вибір версії
+        try:
+            all_versions = [v['id'] for v in minecraft_launcher_lib.utils.get_version_list() if v['type'] == 'release']
+        except Exception:
+            all_versions = ["1.20.1", "1.19.4"]
+            
+        self.version_menu = ctk.CTkOptionMenu(self.bottom_bar, values=all_versions)
+        self.version_menu.pack(side="left", padx=10, pady=30)
+
+        # Кнопка запуску
+        self.launch_button = ctk.CTkButton(self.bottom_bar, text="LAUNCH", fg_color="green", width=100,
+                                           command=self.start_launch_thread)
+        self.launch_button.pack(side="right", padx=10, pady=30)
+
+        # Кнопка Optifine
+        self.optifine_button = ctk.CTkButton(self.bottom_bar, text="✨ Optifine", width=100, fg_color="#b85c00",
+                                             command=self.start_optifine_thread)
+        self.optifine_button.pack(side="right", padx=5, pady=30)
+
+        # Кнопка модів
+        self.mods_button = ctk.CTkButton(self.bottom_bar, text="📁 Mods", width=80, fg_color="gray40",
+                                         command=self.open_mods)
+        self.mods_button.pack(side="right", padx=5, pady=30)
+
+    def check_for_updates(self):
+        try:
+            url = f"https://api.github.com/repos/{GITHUB_REPO}/releases/latest"
+            response = requests.get(url, timeout=5)
+            if response.status_code == 200:
+                data = response.json()
+                latest_version = data.get("tag_name", "").strip("v")
+                if latest_version and latest_version != CURRENT_VERSION:
+                    self.news_label.configure(text=f"New version {latest_version} available!\nUpdating...")
+                    for asset in data.get("assets", []):
+                        if asset["name"].endswith(".py") or asset["name"].endswith(".exe"):
+                            self.download_and_apply_update(asset["browser_download_url"], asset["name"])
+                            break
+        except Exception as e:
+            print(f"Update check failed: {e}")
+
+    def download_and_apply_update(self, url, filename):
+        try:
+            r = requests.get(url)
+            update_path = os.path.join(self.base_path, filename)
+            with open(update_path, "wb") as f:
+                f.write(r.content)
+            if filename.endswith(".py"):
+                os.execv(sys.executable, [sys.executable] + sys.argv)
+        except Exception as e:
+            print(f"Failed to apply update: {e}")
+
+    def open_mods(self):
+        mods_path = os.path.join(self.base_path, "mods")
+        if not os.path.exists(mods_path):
+            os.makedirs(mods_path)
+        os.startfile(mods_path)
+
+    def start_optifine_thread(self):
+        threading.Thread(target=self.install_optifine, daemon=True).start()
+
+    def install_optifine(self):
+        """Відкриває діалог вибору `.jar` інсталятора Optifine та встановлює його"""
+        self.news_label.configure(text="Select Optifine installer (.jar) file...")
+        
+        # Користувач обирає офіційний скачаний інсталятор Optifine.jar з сайту optifine.net
+        optifine_jar = fd.askopenfilename(
+            title="Select Optifine Installer Jar",
+            filetypes=[("Java Archive", "*.jar")]
+        )
+        
+        if not optifine_jar:
+            self.news_label.configure(text="Optifine installation cancelled.")
+            return
+
+        try:
+            self.news_label.configure(text="Installing Optifine, please wait...")
+            
+            # Викликаємо функцію бібліотеки для встановлення Optifine
+            minecraft_launcher_lib.optifine.install_optifine(optifine_jar, self.base_path)
+            
+            self.news_label.configure(text="Optifine successfully installed!")
+        except Exception as e:
+            self.news_label.configure(text=f"Optifine install error: {str(e)[:40]}")
+
+    def start_launch_thread(self):
+        threading.Thread(target=self.run_game, daemon=True).start()
+
+    def run_game(self):
+        version = self.version_menu.get()
+        username = self.username_entry.get() or "Player"
+
+        self.news_label.configure(text=f"Please wait, preparing {version}...")
+
+        minecraft_launcher_lib.install.install_minecraft_version(version, self.base_path)
+
+        self.news_label.configure(text=f"Launching {version}...")
+
+        options = {
+            "username": username,
+            "uuid": "1",
+            "token": "1",
+            "gameDirectory": self.base_path,
+        }
+
+        command = minecraft_launcher_lib.command.get_minecraft_command(version, self.base_path, options)
+        subprocess.run(command)
+        self.news_label.configure(text="Game closed.")
+
+if __name__ == "__main__":
+    app = MaLaun()
+    app.mainloop()

@@ -110,4 +110,4 @@ class MaLaun(ctk.CTk):
         self.news_label.configure(text="Game closed.")
 
 if __name__ == "__main__":
-    MaLaun().mainloop()
+    MaLaun().mainloop() 

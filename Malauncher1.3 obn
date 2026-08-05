@@ -12,7 +12,7 @@ ctk.set_appearance_mode("Dark")
 ctk.set_default_color_theme("blue")
 
 CURRENT_VERSION = "1.1.0"
-GITHUB_REPO = "твій_логін_гітхаб/назва_репозиторію"
+GITHUB_REPO = "https://github.com/holholhol/-6-code/blob/main/Malauncher1.3%20obn"
 
 class MaLaun(ctk.CTk):
     def __init__(self):

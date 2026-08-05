@@ -10,7 +10,7 @@ ctk.set_appearance_mode("Dark")
 ctk.set_default_color_theme("blue")
 
 CURRENT_VERSION = "1.3.0"
-UPDATE_URL = "https://raw.githubusercontent.com/holholhol/-6-code/main/Malauncher1.3%20obn"
+UPDATE_URL = "https://raw.githubusercontent.com/holholhol/-6-code/main/malauncher_update.py"
 
 class MaLaun(ctk.CTk):
     def __init__(self):
@@ -49,7 +49,7 @@ class MaLaun(ctk.CTk):
         ctk.CTkButton(bar, text="LAUNCH", fg_color="green", width=90, command=self.launch_game).pack(side="right", padx=10, pady=20)
         ctk.CTkButton(bar, text="📁 Mods", width=80, fg_color="gray40", command=self.open_mods).pack(side="right", padx=5, pady=20)
         
-        self.upd_btn = ctk.CTkButton(bar, text="🔄 Update", width=100, fg_color="#1f538d", command=self.handle_update)
+        self.upd_btn = ctk.CTkButton(bar, text=" Update", width=100, fg_color="#1f538d", command=self.handle_update)
         self.upd_btn.pack(side="right", padx=5, pady=20)
 
     def check_updates(self):

@@ -105,7 +105,7 @@ class MaLaun(ctk.CTk):
         minecraft_launcher_lib.install.install_minecraft_version(ver, self.base_path)
         self.news_label.configure(text=f"Launching {ver}...")
         
-        opts = {"Username": user, "uuid": "1", "token": "1", "gameDirectory": self.base_path}
+        opts = {"username": user, "uuid": "1", "token": "1", "gameDirectory": self.base_path}
         subprocess.run(minecraft_launcher_lib.command.get_minecraft_command(ver, self.base_path, opts))
         self.news_label.configure(text="Game closed.")
 
